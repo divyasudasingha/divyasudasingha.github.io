@@ -1,4 +1,5 @@
 ---
+// src/pages/index.astro
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
@@ -246,7 +247,7 @@ const recentCreations = creations
     </section>
 
     <!-- ABOUT -->
-    <section class="about container" aria-labelledby="about-strip-title">
+    <section class="about container" id="about" aria-labelledby="about-strip-title">
       <div class="about-card">
         <div class="about-copy">
           <h2 id="about-strip-title">A little about me</h2>
@@ -257,9 +258,6 @@ const recentCreations = creations
             <li>🧪 Making things</li>
             <li>🌳 Adventures</li>
           </ul>
-          <a class="btn btn-coral" href={`${baseURL}about/`}>
-            More about me <span aria-hidden="true">→</span>
-          </a>
         </div>
         <div class="about-emoji" aria-hidden="true">🦋</div>
       </div>
@@ -814,7 +812,7 @@ const recentCreations = creations
 
   .about-chips {
     display: flex;
-    margin: 0 0 1.3rem;
+    margin: 0;
     padding: 0;
     flex-wrap: wrap;
     gap: 0.5rem;

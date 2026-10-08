@@ -18,116 +18,211 @@ function withBaseURL(path: string): string {
   return path.startsWith(base) ? path : `${base}${relativePath}`;
 }
 
-function formatDate(date?: Date): string | undefined {
-  if (!date || Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-
-  return new Intl.DateTimeFormat('en', {
-    dateStyle: 'medium',
-    timeZone: 'UTC',
-  }).format(date);
+function mediumEmoji(medium?: string): string {
+  const m = (medium ?? '').toLowerCase();
+  if (/crayon|pencil|pastel|chalk/.test(m)) return '🖍️';
+  if (/water|paint|acrylic|oil|gouache/.test(m)) return '🖌️';
+  if (/marker|pen|ink|sketch/.test(m)) return '🖊️';
+  if (/digital|computer|tablet|pixel/.test(m)) return '💻';
+  if (/clay|sculpt/.test(m)) return '🏺';
+  if (/collage|paper|craft/.test(m)) return '✂️';
+  return '🎨';
 }
+
+const tones = ['coral', 'grape', 'mint', 'sun'] as const;
+const tilts = ['-1.2deg', '0.9deg', '-0.6deg', '1.3deg'];
 ---
 
 <BaseLayout title="Art | Divya Sudasingha" description="Art by Divya Sudasingha.">
-  <section class="listing-page container" aria-labelledby="page-title">
-    <h1 id="page-title">Art</h1>
+  <section class="page-hero" aria-labelledby="page-title">
+    <span class="deco deco-1" aria-hidden="true">🖌️</span>
+    <span class="deco deco-2" aria-hidden="true">✨</span>
+    <span class="deco deco-3" aria-hidden="true">🌈</span>
+
+    <div class="page-hero-inner">
+      <p class="page-emoji" aria-hidden="true">🎨</p>
+      <h1 id="page-title">Art</h1>
+      <p class="page-lede">Welcome to my picture gallery! Tap a picture to see it up close.</p>
+    </div>
+  </section>
+
+  <section class="listing container" aria-label="All art">
     {art.length ? (
-      <div class="creation-grid">
-        {art.map((piece) => {
+      <div class="gallery">
+        {art.map((piece, index) => {
           const imageURL = piece.data.image ? withBaseURL(piece.data.image) : undefined;
-          const pieceDate = piece.data.year ? new Date(Date.UTC(piece.data.year, 0, 1)) : undefined;
-          const formattedDate = formatDate(pieceDate);
+          const tone = tones[index % tones.length];
+          const tilt = tilts[index % tilts.length];
+          const emoji = mediumEmoji(piece.data.medium);
 
           return (
-            <article class="creation-card">
-              {imageURL ? <img class="card-image" src={imageURL} alt="" loading="lazy" /> : null}
-
-              <div class:list={['card-content', { 'card-content-no-image': !imageURL }]}>
-                {(formattedDate || 'Art') && (
-                  <div class="card-meta">
-                    <span>Art</span>
-                    {formattedDate && <span aria-hidden="true">·</span>}
-                    {formattedDate && <time datetime={pieceDate?.toISOString()}>{formattedDate}</time>}
-                  </div>
+            <article class={`frame-card tone-${tone}`} style={`--tilt:${tilt}`}>
+              <div class="frame">
+                {imageURL ? (
+                  <img class="frame-image" src={imageURL} alt="" loading="lazy" />
+                ) : (
+                  <div class="frame-empty" aria-hidden="true"><span>{emoji}</span></div>
                 )}
+              </div>
 
-                <h3>
+              <div class="caption">
+                <h2>
                   <a class="card-link" href={`${baseURL}art/${piece.id}/`}>{piece.data.title}</a>
-                </h3>
-
-                {piece.data.description && <p class="card-summary">{piece.data.description}</p>}
+                </h2>
+                <p class="caption-meta">
+                  {piece.data.medium && <span class="chip">{emoji} {piece.data.medium}</span>}
+                  {piece.data.year && <span class="chip chip-year">📅 {piece.data.year}</span>}
+                </p>
               </div>
             </article>
           );
         })}
       </div>
     ) : (
-      <p class="empty-state">No art to share just yet. Check back soon!</p>
+      <p class="empty-state">No art on the wall yet. Check back soon! 🌱</p>
     )}
   </section>
 </BaseLayout>
 
 <style>
-  .listing-page {
-    padding-block: clamp(3rem, 8vw, 5rem);
-  }
-
-  .listing-page h1 {
-    margin-bottom: 2rem;
-  }
-
-  .creation-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .creation-card {
+  /* ---------- Page header ---------- */
+  .page-hero {
     position: relative;
     overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: 0.35rem;
-    background: var(--color-background);
-    transition: border-color 150ms ease, transform 150ms ease;
+    padding: clamp(2rem, 5vw, 3.5rem) var(--page-gutter) clamp(2.5rem, 5vw, 3.5rem);
+    border-radius: 0 0 2.5rem 2.5rem;
+    background:
+      radial-gradient(circle at 10% 20%, var(--color-grape-soft) 0, transparent 42%),
+      radial-gradient(circle at 92% 15%, var(--color-sun-soft) 0, transparent 45%),
+      radial-gradient(circle at 70% 100%, var(--color-mint-soft) 0, transparent 50%),
+      var(--color-background);
+    text-align: center;
   }
 
-  .creation-card:hover,
-  .creation-card:focus-within {
-    transform: translateY(-2px);
-    border-color: var(--color-accent);
+  .page-hero-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 40rem;
+    margin-inline: auto;
   }
 
-  .card-image {
+  .page-emoji {
+    margin: 0 0 0.25rem;
+    font-size: 3rem;
+    line-height: 1;
+    animation: bob 4s ease-in-out infinite;
+  }
+
+  .page-hero h1 {
+    margin: 0 0 0.4rem;
+    color: var(--color-grape);
+    font-size: clamp(3rem, 9vw, 5rem);
+    line-height: 1.05;
+    text-shadow: 0 4px 0 var(--color-ink);
+  }
+
+  .page-lede {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: clamp(1.1rem, 2.2vw, 1.3rem);
+    line-height: 1.5;
+  }
+
+  .deco {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    font-size: 2.2rem;
+    animation: bob 4s ease-in-out infinite;
+  }
+
+  .deco-1 { top: 22%; left: 8%; }
+  .deco-2 { top: 14%; right: 9%; animation-delay: -1.5s; }
+  .deco-3 { bottom: 16%; right: 20%; font-size: 2.6rem; animation-delay: -2.4s; }
+
+  /* ---------- Gallery wall (pictures keep their own shape) ---------- */
+  .listing {
+    padding-block: clamp(2rem, 5vw, 3.5rem) clamp(3rem, 7vw, 5rem);
+  }
+
+  .gallery {
+    columns: 1;
+    column-gap: 1.75rem;
+  }
+
+  .frame-card {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    margin: 0 0 1.75rem;
+    break-inside: avoid;
+    transform: rotate(var(--tilt, 0deg));
+    transition: transform 180ms ease;
+  }
+
+  .tone-coral { --accent: var(--color-coral); --accent-soft: var(--color-coral-soft); }
+  .tone-grape { --accent: var(--color-grape); --accent-soft: var(--color-grape-soft); }
+  .tone-mint { --accent: var(--color-mint); --accent-soft: var(--color-mint-soft); }
+  .tone-sun { --accent: var(--color-sun); --accent-soft: var(--color-sun-soft); }
+
+  .frame-card:hover,
+  .frame-card:focus-within {
+    z-index: 2;
+    transform: rotate(0deg) translateY(-6px) scale(1.02);
+  }
+
+  .frame-card:focus-within {
+    outline: 3px solid var(--color-grape);
+    outline-offset: 6px;
+    border-radius: var(--radius);
+  }
+
+  /* the "picture frame": white mat + chunky outline */
+  .frame {
+    padding: 0.7rem;
+    border: 3px solid var(--color-ink);
+    border-radius: 1.25rem;
+    box-shadow: 0 7px 0 var(--accent);
+    background: #fff;
+  }
+
+  .frame-image {
     display: block;
     width: 100%;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
+    height: auto;
+    border-radius: 0.7rem;
+    background: var(--accent-soft);
   }
 
-  .card-content {
-    padding: 0.9rem 1rem;
+  .frame-empty {
+    display: grid;
+    aspect-ratio: 4 / 3;
+    place-items: center;
+    border-radius: 0.7rem;
+    background:
+      radial-gradient(circle at 22% 28%, #fff 0 0.5rem, transparent 0.55rem),
+      radial-gradient(circle at 78% 72%, #fff 0 0.8rem, transparent 0.85rem),
+      var(--accent-soft);
   }
 
-  .card-meta {
-    display: flex;
-    margin-bottom: 0.35rem;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.4rem;
-    color: var(--color-muted);
-    font-size: 0.8rem;
+  .frame-empty span {
+    font-size: 4rem;
   }
 
-  .card-content h3 {
+  /* name plate under the picture */
+  .caption {
+    margin: 1rem 0.4rem 0;
+    text-align: center;
+  }
+
+  .caption h2 {
     margin: 0;
-    font-size: clamp(1.25rem, 2vw, 1.5rem);
-    line-height: 1.3;
+    font-size: clamp(1.4rem, 2.4vw, 1.7rem);
+    line-height: 1.2;
   }
 
   .card-link {
-    color: var(--color-text);
+    color: var(--color-ink);
     text-decoration: none;
   }
 
@@ -139,39 +234,81 @@ function formatDate(date?: Date): string | undefined {
   }
 
   .card-link:hover {
-    color: var(--color-accent);
+    color: var(--color-ink);
   }
 
-  .card-summary {
-    display: -webkit-box;
-    overflow: hidden;
+  .card-link:focus-visible {
+    outline: none;
+  }
+
+  .caption-meta {
+    display: flex;
     margin: 0.5rem 0 0;
-    color: var(--color-muted);
-    font-size: 0.9rem;
-    line-height: 1.5;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem;
   }
 
-  .card-content-no-image {
-    padding-top: 1.1rem;
+  .chip {
+    padding: 0.1rem 0.75rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--color-ink);
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.6;
+  }
+
+  .chip-year {
+    background: #fff;
   }
 
   .empty-state {
     color: var(--color-muted);
+    font-size: 1.15rem;
+    text-align: center;
   }
 
   @media (min-width: 40rem) {
-    .creation-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1.25rem;
+    .gallery {
+      columns: 2;
     }
   }
 
   @media (min-width: 64rem) {
-    .creation-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1.5rem;
+    .gallery {
+      columns: 3;
+      column-gap: 2.25rem;
+    }
+  }
+
+  @media (max-width: 39.99rem) {
+    .deco-1,
+    .deco-3 {
+      display: none;
+    }
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50% { transform: translateY(-0.5rem) rotate(4deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .deco,
+    .page-emoji {
+      animation: none;
+    }
+
+    .frame-card {
+      transition: none;
+      transform: none;
+    }
+
+    .frame-card:hover,
+    .frame-card:focus-within {
+      transform: none;
     }
   }
 </style>

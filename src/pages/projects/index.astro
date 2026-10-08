@@ -4,108 +4,273 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const baseURL = import.meta.env.BASE_URL;
-const projects = (await getCollection('projects'))
-  .sort((a, b) => (b.data.startDate?.getTime() ?? 0) - (a.data.startDate?.getTime() ?? 0));
 
-function formatDate(date?: Date): string | undefined {
-  if (!date || Number.isNaN(date.getTime())) {
-    return undefined;
-  }
+// Featured projects first, then newest
+const projects = (await getCollection('projects')).sort((a, b) => {
+  if (a.data.featured !== b.data.featured) return a.data.featured ? -1 : 1;
+  return (b.data.startDate?.getTime() ?? 0) - (a.data.startDate?.getTime() ?? 0);
+});
 
-  return new Intl.DateTimeFormat('en', {
-    dateStyle: 'medium',
-    timeZone: 'UTC',
-  }).format(date);
+function formatMonth(date?: Date): string | undefined {
+  if (!date || Number.isNaN(date.getTime())) return undefined;
+  return date.toLocaleDateString('en', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
+
+// Pick a fun emoji from the project's name and tools; otherwise take turns
+const fallbackEmojis = ['🚀', '🧪', '🛠️', '💡', '🤖', '🎮'];
+function projectEmoji(title: string, tech: string[], index: number): string {
+  const text = `${title} ${tech.join(' ')}`.toLowerCase();
+  if (/scratch/.test(text)) return '🐱';
+  if (/python/.test(text)) return '🐍';
+  if (/minecraft/.test(text)) return '⛏️';
+  if (/robot|arduino|micro:?bit|raspberry/.test(text)) return '🤖';
+  if (/game/.test(text)) return '🎮';
+  if (/lego/.test(text)) return '🧱';
+  if (/html|css|javascript|web|site|astro/.test(text)) return '🌐';
+  if (/art|draw|paint/.test(text)) return '🖍️';
+  return fallbackEmojis[index % fallbackEmojis.length];
+}
+
+const tones = ['mint', 'sky', 'sun', 'coral', 'grape'] as const;
 ---
 
 <BaseLayout title="Projects | Divya Sudasingha" description="Projects by Divya Sudasingha.">
-  <section class="listing-page container" aria-labelledby="page-title">
-    <h1 id="page-title">Projects</h1>
+  <section class="page-hero" aria-labelledby="page-title">
+    <span class="deco deco-1" aria-hidden="true">🔧</span>
+    <span class="deco deco-2" aria-hidden="true">⚡</span>
+    <span class="deco deco-3" aria-hidden="true">💡</span>
+
+    <div class="page-hero-inner">
+      <p class="page-emoji" aria-hidden="true">🧩</p>
+      <h1 id="page-title">Projects</h1>
+      <p class="page-lede">Things I've built, tried and figured out. Take a look!</p>
+    </div>
+  </section>
+
+  <section class="listing container" aria-label="All projects">
     {projects.length ? (
       <div class="creation-grid">
-        {projects.map((project) => {
-          const formattedDate = formatDate(project.data.startDate);
+        {projects.map((project, index) => {
+          const tone = tones[index % tones.length];
+          const emoji = projectEmoji(project.data.title, project.data.technologies, index);
+          const started = formatMonth(project.data.startDate);
+          const isFinished = Boolean(project.data.endDate);
+          const hasStatus = Boolean(project.data.startDate || project.data.endDate);
+          const tech = project.data.technologies.slice(0, 4);
+          const extraTech = project.data.technologies.length - tech.length;
 
           return (
-            <article class="creation-card">
-              <div class="card-content card-content-no-image">
-                {(formattedDate || 'Project') && (
-                  <div class="card-meta">
-                    <span>Project</span>
-                    {formattedDate && <span aria-hidden="true">·</span>}
-                    {formattedDate && <time datetime={project.data.startDate?.toISOString()}>{formattedDate}</time>}
-                  </div>
-                )}
+            <article class={`creation-card tone-${tone}`} style={`--tilt:${index % 2 === 0 ? '-1deg' : '1deg'}`}>
+              <div class="card-art" aria-hidden="true">
+                {project.data.featured && <span class="featured-badge">⭐ Featured</span>}
+                <span class="card-emoji">{emoji}</span>
+              </div>
 
-                <h3>
+              <div class="card-content">
+                <div class="card-meta">
+                  <span class="chip">🧩 Project</span>
+                  {hasStatus && (
+                    <span class="status">{isFinished ? '✅ Finished' : '🔨 Working on it'}</span>
+                  )}
+                  {started && <time datetime={project.data.startDate?.toISOString()}>{started}</time>}
+                </div>
+
+                <h2>
                   <a class="card-link" href={`${baseURL}projects/${project.id}/`}>{project.data.title}</a>
-                </h3>
+                </h2>
 
                 {project.data.description && <p class="card-summary">{project.data.description}</p>}
+
+                {tech.length > 0 && (
+                  <ul class="tech" aria-label="Made with">
+                    {tech.map((item) => <li>{item}</li>)}
+                    {extraTech > 0 && <li class="tech-more">+{extraTech}</li>}
+                  </ul>
+                )}
+
+                <span class="card-cta" aria-hidden="true">Take a look <span>→</span></span>
               </div>
             </article>
           );
         })}
       </div>
     ) : (
-      <p class="empty-state">No projects to share just yet. Check back soon!</p>
+      <p class="empty-state">No projects yet. Something cool is coming! 🌱</p>
     )}
   </section>
 </BaseLayout>
 
 <style>
-  .listing-page {
-    padding-block: clamp(3rem, 8vw, 5rem);
+  /* ---------- Page header ---------- */
+  .page-hero {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(2rem, 5vw, 3.5rem) var(--page-gutter) clamp(2.5rem, 5vw, 3.5rem);
+    border-radius: 0 0 2.5rem 2.5rem;
+    background:
+      radial-gradient(circle at 10% 20%, var(--color-mint-soft) 0, transparent 42%),
+      radial-gradient(circle at 92% 15%, var(--color-sky-soft) 0, transparent 45%),
+      radial-gradient(circle at 70% 100%, var(--color-sun-soft) 0, transparent 50%),
+      var(--color-background);
+    text-align: center;
   }
 
-  .listing-page h1 {
-    margin-bottom: 2rem;
+  .page-hero-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 40rem;
+    margin-inline: auto;
+  }
+
+  .page-emoji {
+    margin: 0 0 0.25rem;
+    font-size: 3rem;
+    line-height: 1;
+    animation: bob 4s ease-in-out infinite;
+  }
+
+  .page-hero h1 {
+    margin: 0 0 0.4rem;
+    color: var(--color-mint);
+    font-size: clamp(3rem, 9vw, 5rem);
+    line-height: 1.05;
+    text-shadow: 0 4px 0 var(--color-ink);
+  }
+
+  .page-lede {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: clamp(1.1rem, 2.2vw, 1.3rem);
+    line-height: 1.5;
+  }
+
+  .deco {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    font-size: 2.2rem;
+    animation: bob 4s ease-in-out infinite;
+  }
+
+  .deco-1 { top: 22%; left: 8%; }
+  .deco-2 { top: 14%; right: 9%; animation-delay: -1.5s; }
+  .deco-3 { bottom: 16%; right: 20%; font-size: 2.6rem; animation-delay: -2.4s; }
+
+  /* ---------- Grid ---------- */
+  .listing {
+    padding-block: clamp(2rem, 5vw, 3.5rem) clamp(3rem, 7vw, 5rem);
   }
 
   .creation-grid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.6rem;
   }
 
   .creation-card {
     position: relative;
+    display: flex;
     overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: 0.35rem;
-    background: var(--color-background);
-    transition: border-color 150ms ease, transform 150ms ease;
+    flex-direction: column;
+    border: 3px solid var(--color-ink);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 0 var(--accent);
+    background: #fff;
+    transition: transform 160ms ease, box-shadow 160ms ease;
   }
+
+  .tone-coral { --accent: var(--color-coral); --accent-soft: var(--color-coral-soft); }
+  .tone-grape { --accent: var(--color-grape); --accent-soft: var(--color-grape-soft); }
+  .tone-mint { --accent: var(--color-mint); --accent-soft: var(--color-mint-soft); }
+  .tone-sun { --accent: var(--color-sun); --accent-soft: var(--color-sun-soft); }
+  .tone-sky { --accent: var(--color-sky); --accent-soft: var(--color-sky-soft); }
 
   .creation-card:hover,
   .creation-card:focus-within {
-    transform: translateY(-2px);
-    border-color: var(--color-accent);
+    transform: translateY(-4px) rotate(var(--tilt, 0deg));
+    box-shadow: 0 10px 0 var(--accent);
+  }
+
+  .creation-card:focus-within {
+    outline: 3px solid var(--color-grape);
+    outline-offset: 4px;
+  }
+
+  .card-art {
+    position: relative;
+    display: grid;
+    min-height: 9rem;
+    place-items: center;
+    border-bottom: 3px solid var(--color-ink);
+    background:
+      radial-gradient(circle at 18% 28%, #fff 0 0.5rem, transparent 0.55rem),
+      radial-gradient(circle at 84% 70%, #fff 0 0.85rem, transparent 0.9rem),
+      var(--accent-soft);
+  }
+
+  .card-emoji {
+    font-size: 4.2rem;
+    line-height: 1;
+    transition: transform 200ms ease;
+  }
+
+  .creation-card:hover .card-emoji {
+    transform: scale(1.15) rotate(6deg);
+  }
+
+  .featured-badge {
+    position: absolute;
+    top: 0.8rem;
+    left: 0.8rem;
+    padding: 0.2rem 0.8rem;
+    border: 3px solid var(--color-ink);
+    border-radius: 999px;
+    box-shadow: 0 3px 0 var(--color-ink);
+    background: var(--color-sun);
+    color: var(--color-ink);
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    font-weight: 700;
+    transform: rotate(-4deg);
   }
 
   .card-content {
-    padding: 0.9rem 1rem;
+    display: flex;
+    padding: 1rem 1.25rem 1.3rem;
+    flex: 1;
+    flex-direction: column;
   }
 
   .card-meta {
     display: flex;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.55rem;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.4rem;
+    align-items: center;
+    gap: 0.5rem;
     color: var(--color-muted);
-    font-size: 0.8rem;
+    font-size: 0.85rem;
   }
 
-  .card-content h3 {
+  .chip {
+    padding: 0.15rem 0.7rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--color-ink);
+    font-weight: 700;
+  }
+
+  .status {
+    font-weight: 700;
+  }
+
+  .card-content h2 {
     margin: 0;
-    font-size: clamp(1.25rem, 2vw, 1.5rem);
-    line-height: 1.3;
+    font-size: clamp(1.5rem, 2.4vw, 1.8rem);
+    line-height: 1.2;
   }
 
   .card-link {
-    color: var(--color-text);
+    color: var(--color-ink);
     text-decoration: none;
   }
 
@@ -117,7 +282,11 @@ function formatDate(date?: Date): string | undefined {
   }
 
   .card-link:hover {
-    color: var(--color-accent);
+    color: var(--color-ink);
+  }
+
+  .card-link:focus-visible {
+    outline: none;
   }
 
   .card-summary {
@@ -125,31 +294,102 @@ function formatDate(date?: Date): string | undefined {
     overflow: hidden;
     margin: 0.5rem 0 0;
     color: var(--color-muted);
-    font-size: 0.9rem;
     line-height: 1.5;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
   }
 
-  .card-content-no-image {
-    padding-top: 1.1rem;
+  .tech {
+    display: flex;
+    margin: 0.8rem 0 0;
+    padding: 0;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+  }
+
+  .tech li {
+    padding: 0.05rem 0.65rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+    background: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1.6;
+  }
+
+  .tech .tech-more {
+    background: var(--accent-soft);
+  }
+
+  .card-cta {
+    display: inline-flex;
+    margin-top: auto;
+    padding-top: 1rem;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--color-accent);
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .card-cta span {
+    transition: transform 160ms ease;
+  }
+
+  .creation-card:hover .card-cta span {
+    transform: translateX(4px);
   }
 
   .empty-state {
     color: var(--color-muted);
+    font-size: 1.15rem;
+    text-align: center;
   }
 
   @media (min-width: 40rem) {
     .creation-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1.25rem;
     }
   }
 
   @media (min-width: 64rem) {
     .creation-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1.5rem;
+      gap: 1.9rem;
+    }
+  }
+
+  @media (max-width: 39.99rem) {
+    .deco-1,
+    .deco-3 {
+      display: none;
+    }
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50% { transform: translateY(-0.5rem) rotate(4deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .deco,
+    .page-emoji {
+      animation: none;
+    }
+
+    .creation-card,
+    .card-emoji,
+    .card-cta span {
+      transition: none;
+    }
+
+    .creation-card:hover,
+    .creation-card:focus-within,
+    .creation-card:hover .card-emoji,
+    .creation-card:hover .card-cta span {
+      transform: none;
     }
   }
 </style>
