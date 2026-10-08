@@ -1,0 +1,45 @@
+---
+const baseURL = import.meta.env.BASE_URL;
+---
+
+<section class="about-strip" aria-labelledby="about-strip-title">
+  <div class="about-strip-content">
+    <h2 id="about-strip-title">A little about me</h2>
+    <p>I love creating stories, drawings and fun projects.</p>
+    <a href={`${baseURL}about/`}>More about me <span aria-hidden="true">→</span></a>
+  </div>
+</section>
+
+<style>
+  .about-strip {
+    padding: 3.5rem var(--page-gutter);
+    background: color-mix(in srgb, var(--color-secondary) 10%, var(--color-background));
+    text-align: center;
+  }
+
+  .about-strip-content {
+    width: min(100%, 40rem);
+    margin-inline: auto;
+  }
+
+  .about-strip h2 {
+    margin-bottom: 0.75rem;
+  }
+
+  .about-strip p {
+    margin-bottom: 1rem;
+    color: var(--color-muted);
+  }
+
+  .about-strip a {
+    display: inline-block;
+    padding: 0.25rem;
+    font-weight: 700;
+  }
+
+  @media (min-width: 48rem) {
+    .about-strip {
+      padding-block: 4.5rem;
+    }
+  }
+</style>

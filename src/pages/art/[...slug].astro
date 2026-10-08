@@ -1,0 +1,97 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const art = await getCollection('art');
+  return art.map((piece) => ({
+    params: { slug: piece.id },
+    props: { piece },
+  }));
+}
+
+const { piece } = Astro.props;
+const { Content } = await render(piece);
+const baseURL = import.meta.env.BASE_URL;
+
+function withBaseURL(path: string): string {
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(path)) return path;
+  const base = baseURL.endsWith('/') ? baseURL : `${baseURL}/`;
+  return path.startsWith(base) ? path : `${base}${path.replace(/^\/+/, '')}`;
+}
+
+const imageURL = piece.data.image ? withBaseURL(piece.data.image) : undefined;
+---
+
+<BaseLayout title={`${piece.data.title} | Divya Sudasingha`} description={piece.data.description}>
+  <article class="detail-page container">
+    <a class="back-link" href={`${baseURL}art/`}>← All art</a>
+    <header class="detail-header">
+      <p class="eyebrow">Art</p>
+      <h1>{piece.data.title}</h1>
+      {piece.data.year && <time datetime={`${piece.data.year}`}>{piece.data.year}</time>}
+    </header>
+    {imageURL && <img class="detail-image" src={imageURL} alt="" />}
+    <div class="prose"><Content /></div>
+  </article>
+</BaseLayout>
+
+<style>
+  .detail-page {
+    max-width: 52rem;
+    padding-block: 2rem 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 2rem;
+    font-weight: 700;
+  }
+
+  .detail-header {
+    margin-bottom: 2rem;
+  }
+
+  .eyebrow {
+    margin-bottom: 0.5rem;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .detail-header h1 {
+    margin-bottom: 0.75rem;
+    font-size: clamp(2.25rem, 8vw, 4rem);
+  }
+
+  .detail-header time {
+    color: var(--color-muted);
+  }
+
+  .detail-image {
+    width: 100%;
+    max-height: 34rem;
+    margin-bottom: 2rem;
+    border-radius: 0.35rem;
+    object-fit: cover;
+  }
+
+  .prose {
+    font-size: 1.0625rem;
+    line-height: 1.9;
+    overflow-wrap: anywhere;
+  }
+
+  .prose :global(h2),
+  .prose :global(h3) {
+    margin-top: 2em;
+  }
+
+  .prose :global(img) {
+    height: auto;
+    margin-block: 1.5rem;
+    border-radius: 0.25rem;
+  }
+</style>

@@ -1,0 +1,64 @@
+---
+import { getCollection } from 'astro:content';
+import CreationCard from '../../components/CreationCard.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const art = (await getCollection('art'))
+  .sort((a, b) => (b.data.year ?? 0) - (a.data.year ?? 0));
+---
+
+<BaseLayout title="Art | Divya Sudasingha" description="Art by Divya Sudasingha.">
+  <section class="listing-page container" aria-labelledby="page-title">
+    <h1 id="page-title">Art</h1>
+    {art.length ? (
+      <div class="creation-grid">
+        {art.map((piece) => (
+          <CreationCard
+            title={piece.data.title}
+            date={piece.data.year ? new Date(Date.UTC(piece.data.year, 0, 1)) : undefined}
+            category="Art"
+            image={piece.data.image}
+            summary={piece.data.description}
+            url={`${import.meta.env.BASE_URL}art/${piece.id}/`}
+          />
+        ))}
+      </div>
+    ) : (
+      <p class="empty-state">No art to share just yet. Check back soon!</p>
+    )}
+  </section>
+</BaseLayout>
+
+<style>
+  .listing-page {
+    padding-block: clamp(3rem, 8vw, 5rem);
+  }
+
+  .listing-page h1 {
+    margin-bottom: 2rem;
+  }
+
+  .creation-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .empty-state {
+    color: var(--color-muted);
+  }
+
+  @media (min-width: 40rem) {
+    .creation-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.25rem;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .creation-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+  }
+</style>

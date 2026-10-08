@@ -1,0 +1,89 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+  return projects.map((project) => ({
+    params: { slug: project.id },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project);
+const baseURL = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title={`${project.data.title} | Divya Sudasingha`} description={project.data.description}>
+  <article class="detail-page container">
+    <a class="back-link" href={`${baseURL}projects/`}>← All projects</a>
+    <header class="detail-header">
+      <p class="eyebrow">Project</p>
+      <h1>{project.data.title}</h1>
+      {project.data.startDate && (
+        <time datetime={project.data.startDate.toISOString()}>
+          {project.data.startDate.toLocaleDateString('en', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'UTC',
+          })}
+        </time>
+      )}
+    </header>
+    <div class="prose"><Content /></div>
+  </article>
+</BaseLayout>
+
+<style>
+  .detail-page {
+    max-width: 52rem;
+    padding-block: 2rem 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 2rem;
+    font-weight: 700;
+  }
+
+  .detail-header {
+    margin-bottom: 2rem;
+  }
+
+  .eyebrow {
+    margin-bottom: 0.5rem;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .detail-header h1 {
+    margin-bottom: 0.75rem;
+    font-size: clamp(2.25rem, 8vw, 4rem);
+  }
+
+  .detail-header time {
+    color: var(--color-muted);
+  }
+
+  .prose {
+    font-size: 1.0625rem;
+    line-height: 1.9;
+    overflow-wrap: anywhere;
+  }
+
+  .prose :global(h2),
+  .prose :global(h3) {
+    margin-top: 2em;
+  }
+
+  .prose :global(img) {
+    height: auto;
+    margin-block: 1.5rem;
+    border-radius: 0.25rem;
+  }
+</style>

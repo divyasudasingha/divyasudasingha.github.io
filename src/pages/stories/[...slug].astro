@@ -1,0 +1,106 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const stories = await getCollection('stories', ({ data }) => !data.draft);
+  return stories.map((story) => ({
+    params: { slug: story.id },
+    props: { story },
+  }));
+}
+
+const { story } = Astro.props;
+const { Content } = await render(story);
+const baseURL = import.meta.env.BASE_URL;
+
+function withBaseURL(path: string): string {
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(path)) return path;
+  const base = baseURL.endsWith('/') ? baseURL : `${baseURL}/`;
+  return path.startsWith(base) ? path : `${base}${path.replace(/^\/+/, '')}`;
+}
+
+const imageURL = story.data.image ? withBaseURL(story.data.image) : undefined;
+---
+
+<BaseLayout title={`${story.data.title} | Divya Sudasingha`} description={story.data.description}>
+  <article class="detail-page container">
+    <a class="back-link" href={`${baseURL}stories/`}>← All stories</a>
+    <header class="detail-header">
+      <p class="eyebrow">Story</p>
+      <h1>{story.data.title}</h1>
+      {story.data.pubDate && (
+        <time datetime={story.data.pubDate.toISOString()}>
+          {story.data.pubDate.toLocaleDateString('en', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'UTC',
+          })}
+        </time>
+      )}
+    </header>
+    {imageURL && <img class="detail-image" src={imageURL} alt="" />}
+    <div class="prose"><Content /></div>
+  </article>
+</BaseLayout>
+
+<style>
+  .detail-page {
+    max-width: 52rem;
+    padding-block: 2rem 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 2rem;
+    font-weight: 700;
+  }
+
+  .detail-header {
+    margin-bottom: 2rem;
+  }
+
+  .eyebrow {
+    margin-bottom: 0.5rem;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .detail-header h1 {
+    margin-bottom: 0.75rem;
+    font-size: clamp(2.25rem, 8vw, 4rem);
+  }
+
+  .detail-header time {
+    color: var(--color-muted);
+  }
+
+  .detail-image {
+    width: 100%;
+    max-height: 34rem;
+    margin-bottom: 2rem;
+    border-radius: 0.35rem;
+    object-fit: cover;
+  }
+
+  .prose {
+    font-size: 1.0625rem;
+    line-height: 1.9;
+    overflow-wrap: anywhere;
+  }
+
+  .prose :global(h2),
+  .prose :global(h3) {
+    margin-top: 2em;
+  }
+
+  .prose :global(img) {
+    height: auto;
+    margin-block: 1.5rem;
+    border-radius: 0.25rem;
+  }
+</style>

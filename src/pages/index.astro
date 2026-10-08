@@ -1,0 +1,103 @@
+---
+import AboutStrip from '../components/AboutStrip.astro';
+import CreationCard from '../components/CreationCard.astro';
+import Hero from '../components/Hero.astro';
+import LatestStory from '../components/LatestStory.astro';
+import SectionHeading from '../components/SectionHeading.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const [stories, art, projects] = await Promise.all([
+  getCollection('stories', ({ data }) => !data.draft),
+  getCollection('art'),
+  getCollection('projects'),
+]);
+
+const creations = [
+  ...stories.map((entry) => ({
+    key: `stories:${entry.id}`,
+    title: entry.data.title,
+    category: 'Story',
+    date: entry.data.pubDate,
+    image: entry.data.image,
+    summary: entry.data.description,
+    url: `stories/${entry.id}/`,
+  })),
+  ...art.map((entry) => ({
+    key: `art:${entry.id}`,
+    title: entry.data.title,
+    category: 'Art',
+    date: entry.data.year ? new Date(Date.UTC(entry.data.year, 0, 1)) : undefined,
+    image: entry.data.image,
+    summary: entry.data.description,
+    url: `art/${entry.id}/`,
+  })),
+  ...projects.map((entry) => ({
+    key: `projects:${entry.id}`,
+    title: entry.data.title,
+    category: 'Project',
+    date: entry.data.startDate,
+    image: undefined,
+    summary: entry.data.description,
+    url: `projects/${entry.id}/`,
+  })),
+].sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
+
+const datedStories = stories
+  .filter((entry) => entry.data.pubDate)
+  .sort((a, b) => b.data.pubDate!.getTime() - a.data.pubDate!.getTime());
+const latestStoryKey = datedStories[0] ? `stories:${datedStories[0].id}` : undefined;
+const recentCreations = creations
+  .filter((creation) => creation.key !== latestStoryKey)
+  .slice(0, 3);
+---
+
+<BaseLayout
+  title="Divya Sudasingha"
+  description="Stories, art, and projects by Divya Sudasingha."
+>
+  <Hero />
+  <LatestStory />
+  <section class="recent-creations container" aria-labelledby="recent-creations-title">
+    <SectionHeading title="Recent creations" />
+    {recentCreations.length ? (
+      <div class="creation-grid">
+        {recentCreations.map((creation) => <CreationCard {...creation} />)}
+      </div>
+    ) : (
+      <p class="empty-state">Nothing here just yet. Check back soon!</p>
+    )}
+  </section>
+  <AboutStrip />
+</BaseLayout>
+
+<style>
+  .recent-creations {
+    padding-block: 0 4rem;
+  }
+
+  .creation-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .empty-state {
+    margin: 0;
+    color: var(--color-muted);
+  }
+
+  @media (min-width: 40rem) {
+    .creation-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.25rem;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .creation-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+  }
+</style>

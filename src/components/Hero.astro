@@ -1,0 +1,78 @@
+---
+const baseURL = import.meta.env.BASE_URL;
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-content">
+    <h1 id="hero-title">Hi, I'm Divya.</h1>
+    <p class="hero-subtitle">I write stories and make art.</p>
+    <nav class="hero-actions" aria-label="Explore">
+      <a class="hero-link hero-link-primary" href={`${baseURL}stories/`}>Read my stories</a>
+      <a class="hero-link hero-link-secondary" href={`${baseURL}art/`}>See my art</a>
+    </nav>
+  </div>
+</section>
+
+<style>
+  .hero {
+    display: grid;
+    min-height: clamp(24rem, 58vh, 38rem);
+    padding: 4rem var(--page-gutter);
+    place-items: center;
+    text-align: center;
+  }
+
+  .hero-content {
+    width: min(100%, 42rem);
+  }
+
+  .hero h1 {
+    margin-bottom: 1rem;
+  }
+
+  .hero-subtitle {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: clamp(1.125rem, 4vw, 1.375rem);
+  }
+
+  .hero-actions {
+    display: flex;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
+  .hero-link {
+    display: inline-flex;
+    min-height: 2.875rem;
+    padding: 0.65rem 1.15rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-accent);
+    border-radius: 0.25rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+
+  .hero-link-primary {
+    background: var(--color-accent);
+    color: var(--color-background);
+  }
+
+  .hero-link-primary:hover {
+    background: var(--color-text);
+    color: var(--color-background);
+  }
+
+  .hero-link-secondary {
+    color: var(--color-accent);
+  }
+
+  .hero-link-secondary:hover {
+    background: var(--color-accent);
+    color: var(--color-background);
+  }
+</style>
