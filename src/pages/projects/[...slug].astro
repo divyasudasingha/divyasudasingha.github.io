@@ -3,16 +3,13 @@
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
-// Same order as the projects page: featured first, then newest
-function sortProjects<T extends { data: { featured: boolean; startDate?: Date } }>(list: T[]): T[] {
-  return list.sort((a, b) => {
+export async function getStaticPaths() {
+  // Same order as the projects page: featured first, then newest.
+  // (Everything getStaticPaths needs must live inside it.)
+  const projects = (await getCollection('projects')).sort((a, b) => {
     if (a.data.featured !== b.data.featured) return a.data.featured ? -1 : 1;
     return (b.data.startDate?.getTime() ?? 0) - (a.data.startDate?.getTime() ?? 0);
   });
-}
-
-export async function getStaticPaths() {
-  const projects = sortProjects(await getCollection('projects'));
 
   return projects.map((project, index) => {
     const previous = index > 0 ? projects[index - 1] : undefined;
