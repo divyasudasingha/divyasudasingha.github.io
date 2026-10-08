@@ -1,66 +1,365 @@
 ---
 // src/pages/stories/index.astro
-
 import { getCollection } from 'astro:content';
-import CreationCard from '../../components/CreationCard.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
+const baseURL = import.meta.env.BASE_URL;
 const stories = (await getCollection('stories', ({ data }) => !data.draft))
   .sort((a, b) => (b.data.pubDate?.getTime() ?? 0) - (a.data.pubDate?.getTime() ?? 0));
+
+function withBaseURL(path: string): string {
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(path)) {
+    return path;
+  }
+
+  const base = baseURL.endsWith('/') ? baseURL : `${baseURL}/`;
+  const relativePath = path.replace(/^\/+/, '');
+
+  return path.startsWith(base) ? path : `${base}${relativePath}`;
+}
+
+function formatDate(date?: Date): string | undefined {
+  if (!date || Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(date);
+}
+
+// Cards take turns using each colour so the page feels lively
+const tones = ['coral', 'grape', 'mint', 'sun'] as const;
+const emojis = ['📖', '🌟', '🦋', '🌈'];
+
+const newestId = stories.find((entry) => entry.data.pubDate)?.id;
 ---
 
 <BaseLayout title="Stories | Divya Sudasingha" description="Stories by Divya Sudasingha.">
-  <section class="listing-page container" aria-labelledby="page-title">
-    <h1 id="page-title">Stories</h1>
+  <section class="page-hero" aria-labelledby="page-title">
+    <span class="deco deco-1" aria-hidden="true">★</span>
+    <span class="deco deco-2" aria-hidden="true">☁️</span>
+    <span class="deco deco-3" aria-hidden="true">✨</span>
+
+    <div class="page-hero-inner">
+      <p class="page-emoji" aria-hidden="true">📖</p>
+      <h1 id="page-title">Stories</h1>
+      <p class="page-lede">Pick a story and start reading. Every one is an adventure!</p>
+    </div>
+  </section>
+
+  <section class="listing container" aria-label="All stories">
     {stories.length ? (
       <div class="creation-grid">
-        {stories.map((story) => (
-          <CreationCard
-            title={story.data.title}
-            date={story.data.pubDate}
-            category="Story"
-            image={story.data.image}
-            summary={story.data.description}
-            url={`${import.meta.env.BASE_URL}stories/${story.id}/`}
-          />
-        ))}
+        {stories.map((story, index) => {
+          const imageURL = story.data.image ? withBaseURL(story.data.image) : undefined;
+          const formattedDate = formatDate(story.data.pubDate);
+          const tone = tones[index % tones.length];
+          const emoji = emojis[index % emojis.length];
+          const isNewest = story.id === newestId;
+
+          return (
+            <article class={`creation-card tone-${tone}`} style={`--tilt:${index % 2 === 0 ? '-1deg' : '1deg'}`}>
+              <div class="card-media">
+                {isNewest && <span class="new-badge">⭐ New!</span>}
+                {imageURL ? (
+                  <img class="card-image" src={imageURL} alt="" loading="lazy" />
+                ) : (
+                  <div class="card-art" aria-hidden="true"><span>{emoji}</span></div>
+                )}
+              </div>
+
+              <div class="card-content">
+                <div class="card-meta">
+                  <span class="chip">📖 Story</span>
+                  {formattedDate && <time datetime={story.data.pubDate?.toISOString()}>{formattedDate}</time>}
+                </div>
+
+                <h2>
+                  <a class="card-link" href={`${baseURL}stories/${story.id}/`}>{story.data.title}</a>
+                </h2>
+
+                {story.data.description && <p class="card-summary">{story.data.description}</p>}
+
+                <span class="card-cta" aria-hidden="true">Read it <span>→</span></span>
+              </div>
+            </article>
+          );
+        })}
       </div>
     ) : (
-      <p class="empty-state">No stories to share just yet. Check back soon!</p>
+      <p class="empty-state">No stories yet. Check back soon! 🌱</p>
     )}
   </section>
 </BaseLayout>
 
 <style>
-  .listing-page {
-    padding-block: clamp(3rem, 8vw, 5rem);
+  /* ---------- Page header ---------- */
+  .page-hero {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(2rem, 5vw, 3.5rem) var(--page-gutter) clamp(2.5rem, 5vw, 3.5rem);
+    border-radius: 0 0 2.5rem 2.5rem;
+    background:
+      radial-gradient(circle at 10% 20%, var(--color-coral-soft) 0, transparent 42%),
+      radial-gradient(circle at 92% 15%, var(--color-sun-soft) 0, transparent 45%),
+      radial-gradient(circle at 70% 100%, var(--color-sky-soft) 0, transparent 50%),
+      var(--color-background);
+    text-align: center;
   }
 
-  .listing-page h1 {
-    margin-bottom: 2rem;
+  .page-hero-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 40rem;
+    margin-inline: auto;
+  }
+
+  .page-emoji {
+    margin: 0 0 0.25rem;
+    font-size: 3rem;
+    line-height: 1;
+    animation: bob 4s ease-in-out infinite;
+  }
+
+  .page-hero h1 {
+    margin: 0 0 0.4rem;
+    color: var(--color-coral);
+    font-size: clamp(3rem, 9vw, 5rem);
+    line-height: 1.05;
+    -webkit-text-stroke: 0;
+    text-shadow: 0 4px 0 var(--color-ink);
+  }
+
+  .page-lede {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: clamp(1.1rem, 2.2vw, 1.3rem);
+    line-height: 1.5;
+  }
+
+  .deco {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    font-size: 2rem;
+    animation: bob 4s ease-in-out infinite;
+  }
+
+  .deco-1 { top: 22%; left: 8%; color: var(--color-sun); }
+  .deco-2 { top: 14%; right: 9%; font-size: 2.6rem; animation-delay: -1.5s; }
+  .deco-3 { bottom: 18%; right: 20%; animation-delay: -2.4s; }
+
+  /* ---------- Grid ---------- */
+  .listing {
+    padding-block: clamp(2rem, 5vw, 3.5rem) clamp(3rem, 7vw, 5rem);
   }
 
   .creation-grid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.6rem;
+  }
+
+  .creation-card {
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    flex-direction: column;
+    border: 3px solid var(--color-ink);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 0 var(--accent);
+    background: #fff;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }
+
+  .tone-coral { --accent: var(--color-coral); --accent-soft: var(--color-coral-soft); }
+  .tone-grape { --accent: var(--color-grape); --accent-soft: var(--color-grape-soft); }
+  .tone-mint { --accent: var(--color-mint); --accent-soft: var(--color-mint-soft); }
+  .tone-sun { --accent: var(--color-sun); --accent-soft: var(--color-sun-soft); }
+
+  .creation-card:hover,
+  .creation-card:focus-within {
+    transform: translateY(-4px) rotate(var(--tilt, 0deg));
+    box-shadow: 0 10px 0 var(--accent);
+  }
+
+  .creation-card:focus-within {
+    outline: 3px solid var(--color-grape);
+    outline-offset: 4px;
+  }
+
+  .card-media {
+    position: relative;
+    border-bottom: 3px solid var(--color-ink);
+  }
+
+  .card-image,
+  .card-art {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+  }
+
+  .card-art {
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at 20% 25%, #fff 0 0.5rem, transparent 0.55rem),
+      radial-gradient(circle at 80% 70%, #fff 0 0.8rem, transparent 0.85rem),
+      var(--accent-soft);
+  }
+
+  .card-art span {
+    font-size: 4rem;
+  }
+
+  .new-badge {
+    position: absolute;
+    top: 0.8rem;
+    left: 0.8rem;
+    z-index: 2;
+    padding: 0.2rem 0.8rem;
+    border: 3px solid var(--color-ink);
+    border-radius: 999px;
+    box-shadow: 0 3px 0 var(--color-ink);
+    background: var(--color-sun);
+    color: var(--color-ink);
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    font-weight: 700;
+    transform: rotate(-4deg);
+  }
+
+  .card-content {
+    display: flex;
+    padding: 1rem 1.25rem 1.3rem;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .card-meta {
+    display: flex;
+    margin-bottom: 0.55rem;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--color-muted);
+    font-size: 0.85rem;
+  }
+
+  .chip {
+    padding: 0.15rem 0.7rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--color-ink);
+    font-weight: 700;
+  }
+
+  .card-content h2 {
+    margin: 0;
+    font-size: clamp(1.5rem, 2.4vw, 1.8rem);
+    line-height: 1.2;
+  }
+
+  .card-link {
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+
+  .card-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .card-link:hover {
+    color: var(--color-ink);
+  }
+
+  .card-link:focus-visible {
+    outline: none;
+  }
+
+  .card-summary {
+    display: -webkit-box;
+    overflow: hidden;
+    margin: 0.5rem 0 0;
+    color: var(--color-muted);
+    line-height: 1.5;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .card-cta {
+    display: inline-flex;
+    margin-top: auto;
+    padding-top: 1rem;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--color-accent);
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .card-cta span {
+    transition: transform 160ms ease;
+  }
+
+  .creation-card:hover .card-cta span {
+    transform: translateX(4px);
   }
 
   .empty-state {
     color: var(--color-muted);
+    font-size: 1.15rem;
+    text-align: center;
   }
 
   @media (min-width: 40rem) {
     .creation-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1.25rem;
     }
   }
 
   @media (min-width: 64rem) {
     .creation-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1.5rem;
+      gap: 1.9rem;
+    }
+  }
+
+  @media (max-width: 39.99rem) {
+    .deco-1,
+    .deco-3 {
+      display: none;
+    }
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50% { transform: translateY(-0.5rem) rotate(4deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .deco,
+    .page-emoji {
+      animation: none;
+    }
+
+    .creation-card,
+    .card-cta span {
+      transition: none;
+    }
+
+    .creation-card:hover,
+    .creation-card:focus-within,
+    .creation-card:hover .card-cta span {
+      transform: none;
     }
   }
 </style>

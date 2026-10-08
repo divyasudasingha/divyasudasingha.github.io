@@ -1,19 +1,60 @@
 ---
-// src/pages/index.astro
-
-import AboutStrip from '../components/AboutStrip.astro';
-import CreationCard from '../components/CreationCard.astro';
-import Hero from '../components/Hero.astro';
-import LatestStory from '../components/LatestStory.astro';
-import SectionHeading from '../components/SectionHeading.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
+const baseURL = import.meta.env.BASE_URL;
 const [stories, art, projects] = await Promise.all([
   getCollection('stories', ({ data }) => !data.draft),
   getCollection('art'),
   getCollection('projects'),
 ]);
+
+function withBaseURL(path: string): string {
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(path)) {
+    return path;
+  }
+
+  const base = baseURL.endsWith('/') ? baseURL : `${baseURL}/`;
+  const relativePath = path.replace(/^\/+/, '');
+
+  return path.startsWith(base) ? path : `${base}${relativePath}`;
+}
+
+function cleanStorySummary(body?: string): string | undefined {
+  const firstParagraph = body?.split(/\r?\n\s*\r?\n/)[0];
+  const summary = firstParagraph
+    ?.replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/!\[[^\]]*\]\[[^\]]*]/g, ' ')
+    .replace(/^\s*\[[^\]]+]:.*$/gm, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\[[^\]]*]/g, '$1')
+    .replace(/(?:https?:\/\/|\/images\/)\S+/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/^\s{0,3}(?:#{1,6}\s|>\s|[-*+]\s|\d+\.\s)/gm, '')
+    .replace(/[*_~`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return summary || undefined;
+}
+
+function formatDate(date?: Date): string | undefined {
+  if (!date || Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(date);
+}
+
+const categoryStyle: Record<string, { emoji: string; tone: string }> = {
+  Story: { emoji: '📖', tone: 'coral' },
+  Art: { emoji: '🎨', tone: 'grape' },
+  Project: { emoji: '🧩', tone: 'mint' },
+};
 
 const creations = [
   ...stories.map((entry) => ({
@@ -23,7 +64,7 @@ const creations = [
     date: entry.data.pubDate,
     image: entry.data.image,
     summary: entry.data.description,
-    url: `stories/${entry.id}/`,
+    url: `/stories/${entry.id}/`,
   })),
   ...art.map((entry) => ({
     key: `art:${entry.id}`,
@@ -32,7 +73,7 @@ const creations = [
     date: entry.data.year ? new Date(Date.UTC(entry.data.year, 0, 1)) : undefined,
     image: entry.data.image,
     summary: entry.data.description,
-    url: `art/${entry.id}/`,
+    url: `/art/${entry.id}/`,
   })),
   ...projects.map((entry) => ({
     key: `projects:${entry.id}`,
@@ -41,65 +82,892 @@ const creations = [
     date: entry.data.startDate,
     image: undefined,
     summary: entry.data.description,
-    url: `projects/${entry.id}/`,
+    url: `/projects/${entry.id}/`,
   })),
 ].sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
 
 const datedStories = stories
   .filter((entry) => entry.data.pubDate)
   .sort((a, b) => b.data.pubDate!.getTime() - a.data.pubDate!.getTime());
-const latestStoryKey = datedStories[0] ? `stories:${datedStories[0].id}` : undefined;
+
+const latestStory = datedStories[0];
+const latestStoryURL = latestStory ? withBaseURL(`/stories/${latestStory.id}/`) : undefined;
+const latestStoryImage = latestStory?.data.image ? withBaseURL(latestStory.data.image) : undefined;
+const latestStorySummary = latestStory?.data.description ?? cleanStorySummary(latestStory?.body);
+
 const recentCreations = creations
-  .filter((creation) => creation.key !== latestStoryKey)
-  .slice(0, 3);
+  .filter((creation) => creation.key !== (latestStory ? `stories:${latestStory.id}` : undefined))
+  .slice(0, 6);
 ---
 
-<BaseLayout
-  title="Divya Sudasingha"
-  description="Stories, art, and projects by Divya Sudasingha."
->
-  <Hero />
-  <LatestStory />
-  <section class="recent-creations container" aria-labelledby="recent-creations-title">
-    <SectionHeading title="Recent creations" />
-    {recentCreations.length ? (
-      <div class="creation-grid">
-        {recentCreations.map((creation) => <CreationCard {...creation} />)}
+<BaseLayout title="Divya Sudasingha" description="Stories, art, and projects by Divya Sudasingha.">
+  <div class="home">
+    <!-- HERO -->
+    <section class="hero" aria-labelledby="hero-title">
+      <span class="deco deco-sun" aria-hidden="true"></span>
+      <span class="deco deco-cloud" aria-hidden="true"></span>
+      <span class="deco deco-dot deco-dot-1" aria-hidden="true"></span>
+      <span class="deco deco-dot deco-dot-2" aria-hidden="true"></span>
+      <span class="deco deco-star deco-star-1" aria-hidden="true">★</span>
+      <span class="deco deco-star deco-star-2" aria-hidden="true">★</span>
+
+      <div class="hero-inner">
+        <div class="hero-content">
+          <p class="hero-hello"><span class="wave" aria-hidden="true">👋</span> Hello, friend!</p>
+          <h1 id="hero-title">
+            Hi, I'm <span class="name-highlight">Divya!</span>
+          </h1>
+          <p class="hero-subtitle">I write <strong>stories</strong>, make <strong>art</strong> and build fun <strong>projects</strong>. Come and explore!</p>
+
+          <nav class="hero-actions" aria-label="Explore">
+            <a class="btn btn-coral" href={`${baseURL}stories/`}>
+              <span aria-hidden="true">📖</span> Read my stories
+            </a>
+            <a class="btn btn-grape" href={`${baseURL}art/`}>
+              <span aria-hidden="true">🎨</span> See my art
+            </a>
+            <a class="btn btn-mint" href={`${baseURL}projects/`}>
+              <span aria-hidden="true">🧩</span> My projects
+            </a>
+          </nav>
+        </div>
+
+        <div class="hero-portrait">
+          <div class="portrait-frame">
+            <img
+              src={`${baseURL}images/divya-profile.jpg`}
+              alt="Illustration of Divya painting at her easel"
+              width="1200"
+              height="896"
+              decoding="async"
+              fetchpriority="high"
+            />
+          </div>
+          <span class="sticker sticker-1" aria-hidden="true">✏️</span>
+          <span class="sticker sticker-2" aria-hidden="true">🌈</span>
+          <span class="sticker sticker-3" aria-hidden="true">⭐</span>
+          <span class="sticker sticker-4" aria-hidden="true">📚</span>
+        </div>
       </div>
-    ) : (
-      <p class="empty-state">Nothing here just yet. Check back soon!</p>
+
+      <svg class="hero-wave" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0,30 C180,60 360,0 540,25 C720,50 900,5 1080,28 C1260,50 1350,20 1440,30 L1440,60 L0,60 Z"></path>
+      </svg>
+    </section>
+
+    <!-- LATEST STORY -->
+    {latestStory && (
+      <section class="latest container" aria-labelledby="latest-story-title">
+        <a class:list={['latest-card', { 'latest-card-text-only': !latestStoryImage }]} href={latestStoryURL}>
+          {latestStoryImage ? (
+            <div class="latest-media">
+              <span class="new-badge">⭐ New story!</span>
+              <img src={latestStoryImage} alt="" loading="lazy" />
+            </div>
+          ) : null}
+
+          <div class="latest-copy">
+            {!latestStoryImage && <span class="new-badge new-badge-inline">⭐ New story!</span>}
+            <p class="eyebrow">Latest story</p>
+            <h2 id="latest-story-title">{latestStory.data.title}</h2>
+            {latestStorySummary && <p class="latest-summary">{latestStorySummary}</p>}
+            <span class="btn btn-sun latest-cta">
+              Read the story <span aria-hidden="true">→</span>
+            </span>
+          </div>
+        </a>
+      </section>
     )}
-  </section>
-  <AboutStrip />
+
+    <!-- EXPLORE TILES -->
+    <section class="explore container" aria-labelledby="explore-title">
+      <h2 id="explore-title" class="section-title">Pick an adventure <span aria-hidden="true">🚀</span></h2>
+
+      <div class="tiles">
+        <a class="tile tile-coral" href={`${baseURL}stories/`}>
+          <span class="tile-emoji" aria-hidden="true">📖</span>
+          <span class="tile-title">Stories</span>
+          <span class="tile-text">Tales full of fun and imagination</span>
+        </a>
+        <a class="tile tile-grape" href={`${baseURL}art/`}>
+          <span class="tile-emoji" aria-hidden="true">🎨</span>
+          <span class="tile-title">Art</span>
+          <span class="tile-text">Paintings, drawings and doodles</span>
+        </a>
+        <a class="tile tile-mint" href={`${baseURL}projects/`}>
+          <span class="tile-emoji" aria-hidden="true">🧩</span>
+          <span class="tile-title">Projects</span>
+          <span class="tile-text">Things I made and learned</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- RECENT CREATIONS -->
+    <section class="recent container" aria-labelledby="recent-creations-title">
+      <h2 id="recent-creations-title" class="section-title">Fresh from my desk <span aria-hidden="true">✨</span></h2>
+
+      {recentCreations.length ? (
+        <div class="creation-grid">
+          {recentCreations.map((creation, index) => {
+            const imageURL = creation.image ? withBaseURL(creation.image) : undefined;
+            const cardURL = withBaseURL(creation.url);
+            const formattedDate = formatDate(creation.date);
+            const style = categoryStyle[creation.category] ?? { emoji: '✨', tone: 'sun' };
+
+            return (
+              <article class={`creation-card tone-${style.tone}`} style={`--tilt:${index % 2 === 0 ? '-1deg' : '1deg'}`}>
+                {imageURL ? (
+                  <img class="card-image" src={imageURL} alt="" loading="lazy" />
+                ) : (
+                  <div class="card-art" aria-hidden="true">
+                    <span>{style.emoji}</span>
+                  </div>
+                )}
+
+                <div class="card-content">
+                  <div class="card-meta">
+                    <span class="chip">{style.emoji} {creation.category}</span>
+                    {formattedDate && <time datetime={creation.date?.toISOString()}>{formattedDate}</time>}
+                  </div>
+
+                  <h3>
+                    <a class="card-link" href={cardURL}>{creation.title}</a>
+                  </h3>
+
+                  {creation.summary && <p class="card-summary">{creation.summary}</p>}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <p class="empty-state">More creations are coming soon. Check back! 🌱</p>
+      )}
+    </section>
+
+    <!-- ABOUT -->
+    <section class="about container" aria-labelledby="about-strip-title">
+      <div class="about-card">
+        <div class="about-copy">
+          <h2 id="about-strip-title">A little about me</h2>
+          <p>I love creating stories, drawings and fun projects.</p>
+          <ul class="about-chips" aria-label="Things I love">
+            <li>✏️ Drawing</li>
+            <li>📚 Writing</li>
+            <li>🧪 Making things</li>
+            <li>🌳 Adventures</li>
+          </ul>
+          <a class="btn btn-coral" href={`${baseURL}about/`}>
+            More about me <span aria-hidden="true">→</span>
+          </a>
+        </div>
+        <div class="about-emoji" aria-hidden="true">🦋</div>
+      </div>
+    </section>
+  </div>
 </BaseLayout>
 
 <style>
-  .recent-creations {
-    padding-block: 0 4rem;
+  .home {
+    --c-ink: var(--color-ink);
+    --c-ink-soft: var(--color-muted);
+    --c-cream: var(--color-background);
+    --c-coral: var(--color-coral);
+    --c-coral-soft: var(--color-coral-soft);
+    --c-sun: var(--color-sun);
+    --c-sun-soft: var(--color-sun-soft);
+    --c-sky: var(--color-sky);
+    --c-sky-soft: var(--color-sky-soft);
+    --c-mint: var(--color-mint);
+    --c-mint-soft: var(--color-mint-soft);
+    --c-grape: var(--color-grape);
+    --c-grape-soft: var(--color-grape-soft);
+    --display: var(--font-heading);
+
+    color: var(--c-ink);
+  }
+
+  .home h1,
+  .home h2,
+  .home h3 {
+    font-family: var(--display);
+    font-weight: 700;
+    letter-spacing: 0.005em;
+    color: var(--c-ink);
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(1.5rem, 4vw, 3rem) var(--page-gutter, 1.25rem) clamp(3.5rem, 6vw, 5rem);
+    background:
+      radial-gradient(circle at 8% 15%, var(--c-sun-soft) 0, transparent 38%),
+      radial-gradient(circle at 92% 8%, var(--c-sky-soft) 0, transparent 42%),
+      radial-gradient(circle at 70% 100%, var(--c-coral-soft) 0, transparent 45%),
+      var(--c-cream);
+  }
+
+  .hero-inner {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: min(100%, var(--content-width, 72rem));
+    margin-inline: auto;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .hero-content {
+    text-align: center;
+  }
+
+  .hero-hello {
+    display: inline-block;
+    margin: 0 0 0.75rem;
+    padding: 0.3rem 1rem;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 3px 0 var(--c-sun);
+    font-family: var(--display);
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .wave {
+    display: inline-block;
+    transform-origin: 70% 70%;
+    animation: wave 2.4s ease-in-out infinite;
+  }
+
+  .hero h1 {
+    margin: 0 0 0.75rem;
+    font-size: clamp(2.8rem, 7vw, 5rem);
+    line-height: 1.05;
+  }
+
+  .name-highlight {
+    position: relative;
+    display: inline-block;
+    color: var(--c-coral);
+    z-index: 0;
+  }
+
+  .name-highlight::after {
+    content: '';
+    position: absolute;
+    left: -0.1em;
+    right: -0.1em;
+    bottom: 0.05em;
+    height: 0.28em;
+    border-radius: 999px;
+    background: var(--c-sun);
+    opacity: 0.8;
+    z-index: -1;
+    transform: rotate(-1.5deg);
+  }
+
+  .hero-subtitle {
+    max-width: 34rem;
+    margin: 0 auto;
+    color: var(--c-ink-soft);
+    font-size: clamp(1.1rem, 2vw, 1.35rem);
+    line-height: 1.55;
+  }
+
+  .hero-subtitle strong {
+    color: var(--c-ink);
+  }
+
+  .hero-actions {
+    display: flex;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.9rem;
+  }
+
+  .hero-portrait {
+    position: relative;
+    width: min(100%, 26rem);
+    margin-inline: auto;
+  }
+
+  .portrait-frame {
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    border: 6px solid #fff;
+    border-radius: 46% 54% 52% 48% / 52% 46% 54% 48%;
+    box-shadow: 0 10px 0 var(--c-sky), 0 22px 40px rgb(43 35 64 / 0.18);
+    background: var(--c-sky-soft);
+    transform: rotate(2deg);
+  }
+
+  .portrait-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 30% center;
+  }
+
+  .sticker {
+    position: absolute;
+    display: grid;
+    width: 3.4rem;
+    height: 3.4rem;
+    place-items: center;
+    border: 3px solid var(--c-ink);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 4px 0 var(--c-ink);
+    font-size: 1.6rem;
+    animation: bob 3.6s ease-in-out infinite;
+  }
+
+  .sticker-1 { top: 4%; left: -3%; background: var(--c-sun-soft); }
+  .sticker-2 { top: 10%; right: -4%; background: var(--c-sky-soft); animation-delay: -1.2s; }
+  .sticker-3 { bottom: 12%; left: -5%; background: var(--c-coral-soft); animation-delay: -2.2s; }
+  .sticker-4 { bottom: 4%; right: 0; background: var(--c-mint-soft); animation-delay: -0.6s; }
+
+  .deco {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .deco-sun {
+    top: -3rem;
+    left: -3rem;
+    width: 9rem;
+    height: 9rem;
+    border-radius: 50%;
+    background: var(--c-sun);
+    opacity: 0.55;
+  }
+
+  .deco-cloud {
+    top: 2rem;
+    right: 6%;
+    width: 6rem;
+    height: 2rem;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 1.6rem -0.9rem 0 0.2rem #fff, 3.4rem -0.2rem 0 -0.1rem #fff;
+    opacity: 0.9;
+    animation: drift 12s ease-in-out infinite alternate;
+  }
+
+  .deco-dot { border-radius: 50%; }
+  .deco-dot-1 { bottom: 22%; left: 4%; width: 1.4rem; height: 1.4rem; background: var(--c-grape); opacity: 0.6; }
+  .deco-dot-2 { top: 40%; right: 3%; width: 1rem; height: 1rem; background: var(--c-mint); opacity: 0.7; }
+
+  .deco-star { color: var(--c-sun); font-size: 1.8rem; animation: twinkle 2.8s ease-in-out infinite; }
+  .deco-star-1 { top: 18%; left: 44%; }
+  .deco-star-2 { bottom: 20%; right: 38%; font-size: 1.3rem; color: var(--c-coral); animation-delay: -1.4s; }
+
+  .hero-wave {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: clamp(2rem, 4vw, 3.5rem);
+    fill: var(--color-background);
+  }
+
+  /* ---------- Section titles ---------- */
+  .section-title {
+    margin: 0 0 1.25rem;
+    font-size: clamp(1.8rem, 3.4vw, 2.5rem);
+    line-height: 1.15;
+  }
+
+  /* ---------- Latest story ---------- */
+  .latest {
+    margin-top: clamp(1rem, 3vw, 2rem);
+  }
+
+  .latest-card {
+    display: grid;
+    overflow: hidden;
+    grid-template-columns: minmax(0, 1fr);
+    border: 3px solid var(--c-ink);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 0 var(--c-coral);
+    background: linear-gradient(135deg, var(--c-sun-soft), #fff 60%);
+    color: inherit;
+    text-decoration: none;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }
+
+  .latest-card:hover,
+  .latest-card:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 11px 0 var(--c-coral);
+  }
+
+  .latest-card:focus-visible {
+    outline: 3px solid var(--c-grape);
+    outline-offset: 4px;
+  }
+
+  .latest-media {
+    position: relative;
+    min-height: 15rem;
+    border-bottom: 3px solid var(--c-ink);
+    background: var(--c-sky-soft);
+  }
+
+  .latest-media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+  }
+
+  .new-badge {
+    position: absolute;
+    top: 0.9rem;
+    left: 0.9rem;
+    z-index: 1;
+    padding: 0.3rem 0.9rem;
+    border: 3px solid var(--c-ink);
+    border-radius: 999px;
+    background: var(--c-sun);
+    box-shadow: 0 3px 0 var(--c-ink);
+    font-family: var(--display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    transform: rotate(-4deg);
+  }
+
+  .new-badge-inline {
+    position: static;
+    display: inline-block;
+    margin-bottom: 0.75rem;
+  }
+
+  .latest-copy {
+    display: flex;
+    padding: clamp(1.25rem, 3vw, 2.25rem);
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .eyebrow {
+    margin: 0 0 0.4rem;
+    color: var(--c-coral);
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .latest-copy h2 {
+    margin: 0 0 0.6rem;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.1;
+  }
+
+  .latest-summary {
+    display: -webkit-box;
+    overflow: hidden;
+    margin: 0 0 1.25rem;
+    color: var(--c-ink-soft);
+    font-size: 1.1rem;
+    line-height: 1.55;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+  }
+
+  .latest-card:hover .latest-cta {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 var(--c-ink);
+  }
+
+  /* ---------- Explore tiles ---------- */
+  .explore {
+    margin-top: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .tiles {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.1rem;
+  }
+
+  .tile {
+    display: flex;
+    min-height: 11rem;
+    padding: 1.4rem;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0.2rem;
+    position: relative;
+    overflow: hidden;
+    border: 3px solid var(--c-ink);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 0 var(--c-ink);
+    color: var(--c-ink);
+    text-decoration: none;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }
+
+  .tile:hover,
+  .tile:focus-visible {
+    transform: translateY(-4px) rotate(-1deg);
+    box-shadow: 0 10px 0 var(--c-ink);
+  }
+
+  .tile:focus-visible {
+    outline: 3px solid var(--c-grape);
+    outline-offset: 4px;
+  }
+
+  .tile-coral { background: var(--c-coral-soft); }
+  .tile-grape { background: var(--c-grape-soft); }
+  .tile-mint { background: var(--c-mint-soft); }
+
+  .tile-emoji {
+    position: absolute;
+    top: 0.8rem;
+    right: 1rem;
+    font-size: 4.2rem;
+    line-height: 1;
+    transition: transform 200ms ease;
+  }
+
+  .tile:hover .tile-emoji {
+    transform: scale(1.15) rotate(8deg);
+  }
+
+  .tile-title {
+    font-family: var(--display);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .tile-text {
+    color: var(--c-ink-soft);
+    font-size: 1rem;
+  }
+
+  /* ---------- Recent creations ---------- */
+  .recent {
+    margin-top: clamp(2.5rem, 5vw, 4rem);
   }
 
   .creation-grid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.4rem;
+  }
+
+  .creation-card {
+    position: relative;
+    overflow: hidden;
+    border: 3px solid var(--c-ink);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 0 var(--accent);
+    background: #fff;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }
+
+  .tone-coral { --accent: var(--c-coral); --accent-soft: var(--c-coral-soft); }
+  .tone-grape { --accent: var(--c-grape); --accent-soft: var(--c-grape-soft); }
+  .tone-mint { --accent: var(--c-mint); --accent-soft: var(--c-mint-soft); }
+  .tone-sun { --accent: var(--c-sun); --accent-soft: var(--c-sun-soft); }
+
+  .creation-card:hover,
+  .creation-card:focus-within {
+    transform: translateY(-4px) rotate(var(--tilt, 0deg));
+    box-shadow: 0 10px 0 var(--accent);
+  }
+
+  .creation-card:focus-within {
+    outline: 3px solid var(--c-grape);
+    outline-offset: 4px;
+  }
+
+  .card-image,
+  .card-art {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-bottom: 3px solid var(--c-ink);
+    object-fit: cover;
+  }
+
+  .card-art {
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at 20% 25%, #fff 0 0.5rem, transparent 0.55rem),
+      radial-gradient(circle at 80% 70%, #fff 0 0.8rem, transparent 0.85rem),
+      var(--accent-soft);
+  }
+
+  .card-art span {
+    font-size: 3.6rem;
+  }
+
+  .card-content {
+    padding: 1rem 1.2rem 1.3rem;
+  }
+
+  .card-meta {
+    display: flex;
+    margin-bottom: 0.55rem;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--c-ink-soft);
+    font-size: 0.85rem;
+  }
+
+  .chip {
+    padding: 0.15rem 0.7rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--c-ink);
+    font-weight: 700;
+  }
+
+  .card-content h3 {
+    margin: 0;
+    font-size: clamp(1.4rem, 2.2vw, 1.7rem);
+    line-height: 1.2;
+  }
+
+  .card-link {
+    color: var(--c-ink);
+    text-decoration: none;
+  }
+
+  .card-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .card-link:focus-visible {
+    outline: none;
+  }
+
+  .card-summary {
+    display: -webkit-box;
+    overflow: hidden;
+    margin: 0.5rem 0 0;
+    color: var(--c-ink-soft);
+    line-height: 1.5;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .empty-state {
     margin: 0;
-    color: var(--color-muted);
+    color: var(--c-ink-soft);
+    font-size: 1.1rem;
   }
 
+  /* ---------- About ---------- */
+  .about {
+    margin-block: clamp(2.5rem, 5vw, 4rem) clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .about-card {
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    border: 3px solid var(--c-ink);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 0 var(--c-sky);
+    background: var(--c-sky-soft);
+  }
+
+  .about-copy {
+    position: relative;
+    z-index: 1;
+  }
+
+  .about-copy h2 {
+    margin: 0 0 0.4rem;
+    font-size: clamp(1.8rem, 3.4vw, 2.5rem);
+  }
+
+  .about-copy p {
+    margin: 0 0 0.9rem;
+    color: var(--c-ink-soft);
+    font-size: 1.15rem;
+    line-height: 1.5;
+  }
+
+  .about-chips {
+    display: flex;
+    margin: 0 0 1.3rem;
+    padding: 0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+  }
+
+  .about-chips li {
+    padding: 0.3rem 0.9rem;
+    border: 2px solid var(--c-ink);
+    border-radius: 999px;
+    background: #fff;
+    font-weight: 700;
+  }
+
+  .about-emoji {
+    font-size: clamp(5rem, 14vw, 9rem);
+    line-height: 1;
+    animation: bob 4s ease-in-out infinite;
+  }
+
+  /* ---------- Responsive ---------- */
   @media (min-width: 40rem) {
+    .tiles {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .creation-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1.25rem;
+    }
+  }
+
+  @media (min-width: 52rem) {
+    .hero-inner {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: clamp(1.5rem, 4vw, 3.5rem);
+    }
+
+    .hero-content {
+      text-align: left;
+    }
+
+    .hero-subtitle {
+      margin-inline: 0;
+    }
+
+    .hero-actions {
+      justify-content: flex-start;
+    }
+
+    .latest-card {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    }
+
+    .latest-media {
+      min-height: 22rem;
+      border-right: 3px solid var(--c-ink);
+      border-bottom: 0;
+    }
+
+    .latest-media img {
+      position: absolute;
+      inset: 0;
+      aspect-ratio: auto;
+    }
+
+    .latest-card-text-only {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 
   @media (min-width: 64rem) {
     .creation-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1.5rem;
+    }
+  }
+
+  @media (max-width: 39.99rem) {
+    .btn {
+      width: 100%;
+    }
+
+    .hero-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .about-card {
+      flex-direction: column-reverse;
+      text-align: center;
+    }
+
+    .about-chips {
+      justify-content: center;
+    }
+
+    .about-emoji {
+      font-size: 5rem;
+    }
+
+    .sticker {
+      width: 2.8rem;
+      height: 2.8rem;
+      font-size: 1.3rem;
+    }
+  }
+
+  /* ---------- Animations ---------- */
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-0.6rem) rotate(3deg); }
+  }
+
+  @keyframes wave {
+    0%, 60%, 100% { transform: rotate(0deg); }
+    10%, 30% { transform: rotate(14deg); }
+    20%, 40% { transform: rotate(-8deg); }
+    50% { transform: rotate(10deg); }
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    50% { opacity: 0.45; transform: scale(0.8) rotate(20deg); }
+  }
+
+  @keyframes drift {
+    from { transform: translateX(0); }
+    to { transform: translateX(-2rem); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wave,
+    .sticker,
+    .deco-star,
+    .deco-cloud,
+    .about-emoji {
+      animation: none;
+    }
+
+    .btn,
+    .tile,
+    .tile-emoji,
+    .creation-card,
+    .latest-card {
+      transition: none;
+    }
+
+    .btn:hover,
+    .tile:hover,
+    .tile:hover .tile-emoji,
+    .creation-card:hover,
+    .creation-card:focus-within,
+    .latest-card:hover {
+      transform: none;
     }
   }
 </style>

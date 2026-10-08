@@ -1,8 +1,5 @@
 ---
 // src/layouts/BaseLayout.astro
-
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -10,8 +7,21 @@ interface Props {
   description?: string;
 }
 
+const baseURL = import.meta.env.BASE_URL;
+const currentPath = Astro.url.pathname
+  .slice(baseURL.length)
+  .replace(/^\/|\/$/g, '');
+
+const navigation = [
+  { label: 'Stories', path: 'stories', emoji: '📖', tone: 'coral' },
+  { label: 'Art', path: 'art', emoji: '🎨', tone: 'grape' },
+  { label: 'Projects', path: 'projects', emoji: '🧩', tone: 'mint' },
+  { label: 'About', path: 'about', emoji: '👋', tone: 'sky' },
+];
+
 const { title = 'Divya Sudasingha', description } = Astro.props;
 const canonicalURL = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
+const year = new Date().getFullYear();
 ---
 
 <!doctype html>
@@ -21,20 +31,62 @@ const canonicalURL = Astro.site ? new URL(Astro.url.pathname, Astro.site) : unde
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
     <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#FDFBF7" />
+    <meta name="theme-color" content="#FFF9EE" />
     {description && <meta name="description" content={description} />}
     <title>{title}</title>
     {canonicalURL && <link rel="canonical" href={canonicalURL} />}
-    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
-    <link rel="icon" href={`${import.meta.env.BASE_URL}favicon.ico`} />
+    <link rel="icon" type="image/svg+xml" href={`${baseURL}favicon.svg`} />
+    <link rel="icon" href={`${baseURL}favicon.ico`} />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
+    />
   </head>
   <body>
     <div class="site-shell">
-      <Header />
+      <header class="site-header">
+        <a class="skip-link" href="#main-content">Skip to content</a>
+        <div class="header-inner">
+          <a class="brand" href={baseURL}>
+            <span class="brand-mark" aria-hidden="true">D</span>
+            <span class="brand-name">Divya Sudasingha</span>
+          </a>
+
+          <nav aria-label="Main navigation">
+            <ul class="nav-list">
+              {navigation.map(({ label, path, emoji, tone }) => {
+                const isCurrent = currentPath === path || currentPath.startsWith(`${path}/`);
+
+                return (
+                  <li>
+                    <a
+                      class:list={['nav-link', `tone-${tone}`, { 'is-current': isCurrent }]}
+                      href={`${baseURL}${path}/`}
+                      aria-current={isCurrent ? 'page' : undefined}
+                    >
+                      <span aria-hidden="true">{emoji}</span>
+                      {label}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        </div>
+      </header>
+
       <main id="main-content" class="site-main">
         <slot />
       </main>
-      <Footer />
+
+      <footer class="site-footer">
+        <p class="footer-emojis" aria-hidden="true">📖 🎨 🧩 ✏️ 🌈</p>
+        <p class="footer-name">Divya Sudasingha</p>
+        <p class="footer-note">Made with Dad <span aria-label="love" role="img">♥</span> · © {year}</p>
+      </footer>
     </div>
   </body>
 </html>
@@ -48,5 +100,210 @@ const canonicalURL = Astro.site ? new URL(Astro.url.pathname, Astro.site) : unde
 
   .site-main {
     flex: 1;
+  }
+
+  /* ---------- Header ---------- */
+  .site-header {
+    position: relative;
+    z-index: 10;
+    background: var(--color-background);
+  }
+
+  /* rainbow stripe under the header */
+  .site-header::after,
+  .site-footer::before {
+    content: '';
+    display: block;
+    height: 6px;
+    background: linear-gradient(
+      90deg,
+      var(--color-coral) 0 25%,
+      var(--color-sun) 25% 50%,
+      var(--color-mint) 50% 75%,
+      var(--color-grape) 75% 100%
+    );
+  }
+
+  .header-inner {
+    display: flex;
+    width: min(100% - (2 * var(--page-gutter)), var(--content-width));
+    min-height: 4.5rem;
+    margin-inline: auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding-block: 0.8rem;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--color-text);
+    font-family: var(--font-heading);
+    font-size: 1.45rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .brand:hover {
+    color: var(--color-text);
+  }
+
+  .brand-mark {
+    display: grid;
+    width: 2.4rem;
+    height: 2.4rem;
+    place-items: center;
+    border: 3px solid var(--color-ink);
+    border-radius: 50%;
+    box-shadow: 0 3px 0 var(--color-ink);
+    background: var(--color-sun);
+    font-size: 1.15rem;
+    line-height: 1;
+    transform: rotate(-8deg);
+    transition: transform 200ms ease;
+  }
+
+  .brand:hover .brand-mark,
+  .brand:focus-visible .brand-mark {
+    transform: rotate(8deg) scale(1.08);
+  }
+
+  .nav-list {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    list-style: none;
+  }
+
+  .nav-link {
+    display: inline-flex;
+    min-height: 2.6rem;
+    padding: 0.3rem 0.95rem;
+    align-items: center;
+    gap: 0.35rem;
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: var(--tone-soft);
+    color: var(--color-ink);
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  }
+
+  .tone-coral { --tone: var(--color-coral); --tone-soft: var(--color-coral-soft); --tone-ink: var(--color-ink); }
+  .tone-grape { --tone: var(--color-grape); --tone-soft: var(--color-grape-soft); --tone-ink: #fff; }
+  .tone-mint { --tone: var(--color-mint); --tone-soft: var(--color-mint-soft); --tone-ink: var(--color-ink); }
+  .tone-sky { --tone: var(--color-sky); --tone-soft: var(--color-sky-soft); --tone-ink: var(--color-ink); }
+
+  .nav-link:hover,
+  .nav-link:focus-visible {
+    border-color: var(--color-ink);
+    color: var(--color-ink);
+    transform: translateY(-2px);
+  }
+
+  .nav-link.is-current,
+  .nav-link.is-current:hover {
+    border-color: var(--color-ink);
+    box-shadow: 0 3px 0 var(--color-ink);
+    background: var(--tone);
+    color: var(--tone-ink);
+  }
+
+  .skip-link {
+    position: absolute;
+    z-index: 2;
+    top: 0.5rem;
+    left: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    transform: translateY(-150%);
+    border: var(--outline);
+    border-radius: 0.75rem;
+    background: var(--color-sun);
+    color: var(--color-ink);
+    font-weight: 700;
+  }
+
+  .skip-link:focus {
+    transform: translateY(0);
+  }
+
+  /* ---------- Footer ---------- */
+  .site-footer {
+    background: var(--color-sun-soft);
+    text-align: center;
+  }
+
+  .site-footer::before {
+    margin-bottom: 1.5rem;
+  }
+
+  .footer-emojis {
+    margin: 0 0 0.35rem;
+    font-size: 1.5rem;
+    letter-spacing: 0.25em;
+  }
+
+  .footer-name {
+    margin: 0;
+    color: var(--color-text);
+    font-family: var(--font-heading);
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .footer-note {
+    margin: 0.25rem 0 0;
+    padding-bottom: 1.75rem;
+    color: var(--color-muted);
+    font-size: 0.95rem;
+  }
+
+  .footer-note span {
+    color: var(--color-coral);
+  }
+
+  @media (min-width: 42rem) {
+    .site-header {
+      position: sticky;
+      top: 0;
+    }
+
+    .header-inner {
+      min-height: 5rem;
+      flex-direction: row;
+      justify-content: space-between;
+      gap: 1.5rem;
+      padding-block: 0.6rem;
+    }
+  }
+
+  @media (max-width: 24rem) {
+    .nav-link {
+      padding-inline: 0.7rem;
+      font-size: 0.95rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brand-mark,
+    .nav-link {
+      transition: none;
+    }
+
+    .brand:hover .brand-mark,
+    .nav-link:hover {
+      transform: none;
+    }
   }
 </style>

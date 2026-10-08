@@ -1,18 +1,33 @@
 ---
 // src/pages/stories/[...slug].astro
-
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
 export async function getStaticPaths() {
   const stories = await getCollection('stories', ({ data }) => !data.draft);
-  return stories.map((story) => ({
-    params: { slug: story.id },
-    props: { story },
-  }));
+
+  // Oldest -> newest, used for the "older / newer story" links at the end
+  const dated = stories
+    .filter((entry) => entry.data.pubDate)
+    .sort((a, b) => a.data.pubDate!.getTime() - b.data.pubDate!.getTime());
+
+  return stories.map((story) => {
+    const index = dated.findIndex((entry) => entry.id === story.id);
+    const older = index > 0 ? dated[index - 1] : undefined;
+    const newer = index >= 0 && index < dated.length - 1 ? dated[index + 1] : undefined;
+
+    return {
+      params: { slug: story.id },
+      props: {
+        story,
+        older: older ? { id: older.id, title: older.data.title } : undefined,
+        newer: newer ? { id: newer.id, title: newer.data.title } : undefined,
+      },
+    };
+  });
 }
 
-const { story } = Astro.props;
+const { story, older, newer } = Astro.props;
 const { Content } = await render(story);
 const baseURL = import.meta.env.BASE_URL;
 
@@ -23,86 +38,410 @@ function withBaseURL(path: string): string {
 }
 
 const imageURL = story.data.image ? withBaseURL(story.data.image) : undefined;
+
+// If the story text already contains the cover image (same file as the
+// frontmatter `image`), hide the copy inside the text so it only shows once.
+const imageFile = story.data.image?.split('/').pop()?.split('?')[0];
+const bodyRepeatsImage = Boolean(imageFile && story.body?.includes(imageFile));
+const safeImageFile = imageFile?.replace(/["\\]/g, '\\$&');
+const hideDuplicateCSS = bodyRepeatsImage
+  ? `.prose p:has(> img[src*="${safeImageFile}"]:only-child),
+     .prose img[src*="${safeImageFile}"] { display: none; }`
+  : '';
+
+// Reading time at a relaxed, kid-friendly pace
+const wordCount = story.body ? story.body.trim().split(/\s+/).length : 0;
+const readMinutes = wordCount ? Math.max(1, Math.ceil(wordCount / 150)) : undefined;
+
+const storiesURL = `${baseURL}stories/`;
 ---
 
 <BaseLayout title={`${story.data.title} | Divya Sudasingha`} description={story.data.description}>
-  <article class="detail-page container">
-    <a class="back-link" href={`${baseURL}stories/`}>← All stories</a>
-    <header class="detail-header">
-      <p class="eyebrow">Story</p>
-      <h1>{story.data.title}</h1>
-      {story.data.pubDate && (
-        <time datetime={story.data.pubDate.toISOString()}>
-          {story.data.pubDate.toLocaleDateString('en', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            timeZone: 'UTC',
-          })}
-        </time>
-      )}
+  <article class="story">
+    <!-- Title band -->
+    <header class="story-hero">
+      <span class="deco deco-1" aria-hidden="true">★</span>
+      <span class="deco deco-2" aria-hidden="true">☁️</span>
+      <span class="deco deco-3" aria-hidden="true">✨</span>
+
+      <div class="story-hero-inner">
+        <a class="back-link" href={storiesURL}>
+          <span aria-hidden="true">←</span> All stories
+        </a>
+
+        <p class="chip-row">
+          <span class="chip chip-coral"><span aria-hidden="true">📖</span> Story</span>
+          {story.data.pubDate && (
+            <time class="chip chip-sky" datetime={story.data.pubDate.toISOString()}>
+              <span aria-hidden="true">📅</span>
+              {story.data.pubDate.toLocaleDateString('en', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'UTC',
+              })}
+            </time>
+          )}
+          {readMinutes && (
+            <span class="chip chip-mint"><span aria-hidden="true">⏱️</span> {readMinutes} min read</span>
+          )}
+        </p>
+
+        <h1>{story.data.title}</h1>
+        {story.data.description && <p class="story-lede">{story.data.description}</p>}
+      </div>
     </header>
-    {imageURL && <img class="detail-image" src={imageURL} alt="" />}
-    <div class="prose"><Content /></div>
+
+    <div class="story-body">
+      {imageURL && (
+        <figure class="story-figure">
+          <img src={imageURL} alt={`Illustration for ${story.data.title}`} />
+        </figure>
+      )}
+
+      {hideDuplicateCSS && <Fragment set:html={`<style>${hideDuplicateCSS}</style>`} />}
+      <div class="prose"><Content /></div>
+
+      <!-- The end -->
+      <aside class="the-end" aria-label="End of story">
+        <p class="the-end-stars" aria-hidden="true">⭐ ⭐ ⭐</p>
+        <p class="the-end-title">The End</p>
+        <p class="the-end-text">Did you like it? There are more stories to read!</p>
+        <a class="btn btn-coral" href={storiesURL}>📚 More stories</a>
+      </aside>
+
+      {(older || newer) && (
+        <nav class="story-pager" aria-label="More stories">
+          {older ? (
+            <a class="pager-card pager-older" href={`${baseURL}stories/${older.id}/`} rel="prev">
+              <span class="pager-label"><span aria-hidden="true">←</span> Older story</span>
+              <span class="pager-title">{older.title}</span>
+            </a>
+          ) : (
+            <span></span>
+          )}
+          {newer ? (
+            <a class="pager-card pager-newer" href={`${baseURL}stories/${newer.id}/`} rel="next">
+              <span class="pager-label">Newer story <span aria-hidden="true">→</span></span>
+              <span class="pager-title">{newer.title}</span>
+            </a>
+          ) : (
+            <span></span>
+          )}
+        </nav>
+      )}
+    </div>
   </article>
 </BaseLayout>
 
 <style>
-  .detail-page {
-    max-width: 52rem;
-    padding-block: 2rem 5rem;
+  /* ---------- Title band ---------- */
+  .story-hero {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(1.25rem, 3vw, 2rem) var(--page-gutter) clamp(4rem, 8vw, 6rem);
+    border-radius: 0 0 2.5rem 2.5rem;
+    background:
+      radial-gradient(circle at 10% 20%, var(--color-sun-soft) 0, transparent 40%),
+      radial-gradient(circle at 92% 10%, var(--color-sky-soft) 0, transparent 45%),
+      radial-gradient(circle at 80% 100%, var(--color-coral-soft) 0, transparent 50%),
+      var(--color-background);
+  }
+
+  .story-hero-inner {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 50rem);
+    margin-inline: auto;
+    text-align: center;
   }
 
   .back-link {
-    display: inline-block;
-    margin-bottom: 2rem;
+    display: inline-flex;
+    margin-bottom: 1.25rem;
+    padding: 0.35rem 1rem;
+    align-items: center;
+    gap: 0.4rem;
+    border: 3px solid var(--color-ink);
+    border-radius: 999px;
+    box-shadow: 0 3px 0 var(--color-ink);
+    background: #fff;
+    color: var(--color-ink);
+    font-family: var(--font-heading);
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 140ms ease, box-shadow 140ms ease;
+  }
+
+  .back-link:hover,
+  .back-link:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 var(--color-ink);
+    color: var(--color-ink);
+  }
+
+  .chip-row {
+    display: flex;
+    margin: 0 0 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .chip {
+    display: inline-flex;
+    padding: 0.2rem 0.85rem;
+    align-items: center;
+    gap: 0.35rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+    color: var(--color-ink);
+    font-size: 0.95rem;
     font-weight: 700;
+    line-height: 1.5;
   }
 
-  .detail-header {
-    margin-bottom: 2rem;
+  .chip-coral { background: var(--color-coral-soft); }
+  .chip-sky { background: var(--color-sky-soft); }
+  .chip-mint { background: var(--color-mint-soft); }
+
+  .story-hero h1 {
+    margin: 0 0 0.6rem;
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    line-height: 1.08;
   }
 
-  .eyebrow {
-    margin-bottom: 0.5rem;
+  .story-lede {
+    max-width: 38rem;
+    margin: 0 auto;
     color: var(--color-muted);
-    font-size: 0.875rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-size: clamp(1.1rem, 2.2vw, 1.3rem);
+    line-height: 1.55;
   }
 
-  .detail-header h1 {
-    margin-bottom: 0.75rem;
-    font-size: clamp(2.25rem, 8vw, 4rem);
+  .deco {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    font-size: 2rem;
+    animation: bob 4s ease-in-out infinite;
   }
 
-  .detail-header time {
-    color: var(--color-muted);
+  .deco-1 { top: 18%; left: 7%; color: var(--color-sun); }
+  .deco-2 { top: 12%; right: 8%; font-size: 2.6rem; animation-delay: -1.5s; }
+  .deco-3 { bottom: 26%; right: 14%; animation-delay: -2.4s; }
+
+  /* ---------- Body ---------- */
+  .story-body {
+    width: min(100% - (2 * var(--page-gutter)), 46rem);
+    margin-inline: auto;
+    padding-bottom: 4rem;
   }
 
-  .detail-image {
+  .story-figure {
+    margin: calc(-1 * clamp(2.5rem, 6vw, 4rem)) 0 2.5rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  .story-figure img {
     width: 100%;
     max-height: 34rem;
-    margin-bottom: 2rem;
-    border-radius: 0.35rem;
+    border: 4px solid var(--color-ink);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 0 var(--color-coral);
+    background: var(--color-sky-soft);
     object-fit: cover;
   }
 
   .prose {
-    font-size: 1.0625rem;
+    font-size: clamp(1.15rem, 2vw, 1.3rem);
     line-height: 1.9;
     overflow-wrap: anywhere;
+  }
+
+  /* big friendly first letter */
+  .prose > :global(p:first-child:not(:has(> img)))::first-letter,
+  .prose > :global(p:first-child:has(> img:only-child) + p)::first-letter {
+    float: left;
+    margin: 0.05em 0.12em 0 0;
+    color: var(--color-coral);
+    font-family: var(--font-heading);
+    font-size: 4.2em;
+    font-weight: 700;
+    line-height: 0.8;
+  }
+
+  .prose :global(p) {
+    margin-bottom: 1.4em;
   }
 
   .prose :global(h2),
   .prose :global(h3) {
     margin-top: 2em;
+    color: var(--color-ink);
+  }
+
+  .prose :global(h2) {
+    font-size: clamp(1.8rem, 5vw, 2.4rem);
+  }
+
+  .prose :global(h3) {
+    font-size: clamp(1.4rem, 4vw, 1.8rem);
+  }
+
+  .prose :global(strong) {
+    color: var(--color-ink);
   }
 
   .prose :global(img) {
     height: auto;
-    margin-block: 1.5rem;
-    border-radius: 0.25rem;
+    margin-block: 2rem;
+    border: 3px solid var(--color-ink);
+    border-radius: 1.25rem;
+    box-shadow: 0 6px 0 var(--color-sun);
+  }
+
+  .prose :global(blockquote) {
+    margin: 2rem 0;
+    padding: 1rem 1.5rem;
+    border: 3px solid var(--color-ink);
+    border-radius: 1.25rem;
+    background: var(--color-sun-soft);
+    font-family: var(--font-heading);
+    font-size: 1.15em;
+  }
+
+  .prose :global(blockquote p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .prose :global(ul),
+  .prose :global(ol) {
+    padding-left: 1.5em;
+  }
+
+  .prose :global(li::marker) {
+    color: var(--color-coral);
+    font-weight: 700;
+  }
+
+  /* ---------- The End ---------- */
+  .the-end {
+    margin-top: 3rem;
+    padding: 2rem 1.5rem;
+    border: 3px solid var(--color-ink);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 0 var(--color-grape);
+    background: var(--color-sun-soft);
+    text-align: center;
+  }
+
+  .the-end p {
+    margin: 0;
+  }
+
+  .the-end-stars {
+    font-size: 1.5rem;
+    letter-spacing: 0.3em;
+  }
+
+  .the-end-title {
+    margin-block: 0.25rem 0.4rem !important;
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 6vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .the-end-text {
+    margin-bottom: 1.25rem !important;
+    color: var(--color-muted);
+    font-size: 1.1rem;
+  }
+
+  /* ---------- Older / newer links ---------- */
+  .story-pager {
+    display: grid;
+    margin-top: 2rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .pager-card {
+    display: flex;
+    padding: 1rem 1.25rem;
+    flex-direction: column;
+    gap: 0.15rem;
+    border: 3px solid var(--color-ink);
+    border-radius: 1.25rem;
+    box-shadow: 0 5px 0 var(--color-ink);
+    background: #fff;
+    color: var(--color-ink);
+    text-decoration: none;
+    transition: transform 140ms ease, box-shadow 140ms ease;
+  }
+
+  .pager-older { background: var(--color-sky-soft); }
+  .pager-newer { background: var(--color-mint-soft); text-align: right; }
+
+  .pager-card:hover,
+  .pager-card:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 0 var(--color-ink);
+    color: var(--color-ink);
+  }
+
+  .pager-label {
+    color: var(--color-muted);
+    font-size: 0.9rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .pager-title {
+    font-family: var(--font-heading);
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  @media (min-width: 40rem) {
+    .story-pager {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50% { transform: translateY(-0.5rem) rotate(4deg); }
+  }
+
+  @media (max-width: 39.99rem) {
+    .deco-1,
+    .deco-3 {
+      display: none;
+    }
+
+    .pager-newer {
+      text-align: left;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .deco {
+      animation: none;
+    }
+
+    .back-link,
+    .pager-card {
+      transition: none;
+    }
+
+    .back-link:hover,
+    .pager-card:hover {
+      transform: none;
+    }
   }
 </style>

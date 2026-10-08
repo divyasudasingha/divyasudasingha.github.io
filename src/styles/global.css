@@ -1,22 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600;6..12,700&display=swap');
+/*
+  Fonts are loaded with <link> tags in BaseLayout.astro (faster than @import).
+  Heading: Fredoka (round and friendly)   Body: Nunito (soft and very readable)
+*/
 
 :root {
   color-scheme: light;
-  font-family: 'Nunito Sans', sans-serif;
+  font-family: 'Nunito', system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --color-background: #fdfbf7;
-  --color-text: #2e2a26;
-  --color-accent: #c97b5a;
-  --color-secondary: #7a9e7e;
-  --color-muted: #8a8078;
-  --color-border: #ede7df;
+  /* ---- Core tokens (same names as before, so existing pages keep working) ---- */
+  --color-background: #fff9ee;
+  --color-text: #2b2340;
+  --color-accent: #c93c28;    /* deep coral: safe for link text on cream */
+  --color-secondary: #7b4fe0; /* grape: link hover, secondary fills */
+  --color-muted: #5b5473;     /* readable soft ink (was too pale before) */
+  --color-border: #f0e4cf;
 
-  --font-heading: 'Fraunces', Georgia, serif;
-  --font-body: 'Nunito Sans', sans-serif;
+  /* ---- Playful palette (use these for fills, badges and decorations) ---- */
+  --color-ink: #2b2340;
+  --color-coral: #ff6f59;
+  --color-coral-soft: #ffe1db;
+  --color-sun: #ffc93c;
+  --color-sun-soft: #fff1c2;
+  --color-sky: #5ecbff;
+  --color-sky-soft: #d9f3ff;
+  --color-mint: #2fc999;
+  --color-mint-soft: #d5f6ea;
+  --color-grape: #7b4fe0;
+  --color-grape-soft: #e8defe;
+
+  --font-heading: 'Fredoka', 'Nunito', ui-rounded, system-ui, sans-serif;
+  --font-body: 'Nunito', system-ui, sans-serif;
+
+  --radius: 1.5rem;
+  --outline: 3px solid var(--color-ink);
 
   --content-width: 72rem;
   --page-gutter: 1.25rem;
@@ -41,7 +61,7 @@ body {
   background: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: 1.0625rem;
   line-height: 1.7;
 }
 
@@ -83,13 +103,13 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 3px solid var(--color-grape);
   outline-offset: 3px;
 }
 
 ::selection {
-  background: var(--color-accent);
-  color: var(--color-background);
+  background: var(--color-sun);
+  color: var(--color-ink);
 }
 
 h1,
@@ -101,7 +121,7 @@ h6 {
   margin: 0 0 0.75em;
   color: var(--color-text);
   font-family: var(--font-heading);
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.15;
   text-wrap: balance;
 }
@@ -128,9 +148,10 @@ small,
 }
 
 hr {
-  height: 1px;
+  height: 4px;
   margin: 2rem 0;
   border: 0;
+  border-radius: 999px;
   background: var(--color-border);
 }
 
@@ -139,12 +160,68 @@ hr {
   margin-inline: auto;
 }
 
+/* ---------- Shared "sticker" button (use on any page) ---------- */
+.btn {
+  display: inline-flex;
+  min-height: 3rem;
+  padding: 0.55rem 1.3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: var(--outline);
+  border-radius: 999px;
+  box-shadow: 0 4px 0 var(--color-ink);
+  background: var(--color-sun);
+  color: var(--color-ink);
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.btn:hover,
+.btn:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--color-ink);
+  color: var(--color-ink);
+}
+
+.btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--color-ink);
+}
+
+.btn-coral { background: var(--color-coral); }
+.btn-mint { background: var(--color-mint); }
+.btn-sun { background: var(--color-sun); }
+.btn-sky { background: var(--color-sky); }
+
+.btn-grape,
+.btn-grape:hover,
+.btn-grape:focus-visible {
+  background: var(--color-grape);
+  color: #fff;
+}
+
 @media (min-width: 48rem) {
   :root {
     --page-gutter: 2rem;
   }
+}
 
-  body {
-    font-size: 1.0625rem;
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .btn {
+    transition: none;
+  }
+
+  .btn:hover,
+  .btn:focus-visible,
+  .btn:active {
+    transform: none;
   }
 }
