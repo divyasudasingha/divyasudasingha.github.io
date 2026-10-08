@@ -3,8 +3,6 @@ title: "The Old Forest"
 author: "Divya Sudasingha Appuhamilage"
 ---
 
-# The Old Forest
-
 Once upon a time, there was an old forest. It was so old that nobody went there. One day, a girl saw the forest, and she went inside. There she saw a big castle. It was covered with plants and roots.
 
 Gravelly Springs
